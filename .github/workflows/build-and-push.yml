@@ -1,0 +1,28 @@
+name: Publish Docker image
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: annotate locked dependencies
+        shell: bash
+        run: |
+          jq -r 'to_entries[] | select(.value.locked == true)
+                 | "::warning title=Locked dependency::\(.key) is locked at \(.value.version) and is not auto-updated"' \
+            .github/dependency-versions.json
+      - uses: fffe/untrustworthy-actions/container-build-push@bffb6d903090e1aded32eed189e567b3ea7b970f
+        with:
+          username: ${{ vars.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          image-name: untrustworthy/medusa
